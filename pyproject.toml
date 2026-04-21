@@ -1,0 +1,51 @@
+[build-system]
+requires = ["hatchling>=1.21"]
+build-backend = "hatchling.build"
+
+[project]
+name = "spec-compiler"
+version = "0.1.0"
+description = "Local compiler that turns a Spec bundle of plain-English into real code."
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.9"
+authors = [{ name = "Spec" }]
+keywords = ["spec", "markdown", "compiler", "llm"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Topic :: Software Development :: Code Generators",
+]
+dependencies = [
+    "click>=8.1",
+    "rich>=13.7",
+    "PyYAML>=6.0",
+    "requests>=2.31",
+]
+
+[project.optional-dependencies]
+# Claude is the default engine for `spec-compile` — matches the CLI's
+# Claude-Code-first `spec compile` flow. Other engines remain opt-in.
+anthropic = ["anthropic>=0.34"]
+openai = ["openai>=1.40"]
+all = ["openai>=1.40", "anthropic>=0.34"]
+dev = ["pytest>=8.0", "ruff>=0.5"]
+
+[project.urls]
+Homepage = "https://spec.lightreach.io"
+Source = "https://github.com/spec/spec-compiler"
+Issues = "https://github.com/spec/spec-compiler/issues"
+
+[project.scripts]
+spec-compile = "spec_compiler.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/spec_compiler"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py39"

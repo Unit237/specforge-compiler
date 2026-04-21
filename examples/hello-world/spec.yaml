@@ -1,0 +1,42 @@
+schema: "spec/v0.1"
+name: hello-world
+description: Smallest possible Spec bundle — a CLI that prints a greeting.
+
+spec:
+  entry: docs/product.md
+  include:
+    - "docs/**/*.md"
+  exclude: []
+
+prompts:
+  directory: prompts
+
+compiler:
+  # defaults — used when no route matches and no frontmatter overrides.
+  engine: openai
+  model: gpt-5
+  temperature: 0.2
+  max_output_tokens: 4000
+
+  # route table — first match wins, evaluated top-to-bottom.
+  # any compiler.* key can be overridden per route.
+  routes:
+    - match: "docs/architecture/**/*.md"
+      model: gpt-5
+      temperature: 0.15
+    - match: "prompts/**/*.md"
+      engine: anthropic
+      model: claude-sonnet-4
+    - match: "docs/**/*.md"
+      model: gpt-5-mini
+
+output:
+  target: ./out
+  changelog: true
+  commit_style: conventional
+
+approvals:
+  required: 0
+
+cloud:
+  project: hello-world
