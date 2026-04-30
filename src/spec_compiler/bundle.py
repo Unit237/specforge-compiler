@@ -27,11 +27,11 @@ from typing import Any
 
 import yaml
 
-from .bundle_glob import glob_match, match_any
 from .constants import (
     MANIFEST_FILENAME,
     PROMPTS_CURATED_DIRNAME,
     PROMPTS_PENDING_DIRNAME,
+    is_bundle_md,
     is_session_file,
     is_spec_file,
 )
@@ -114,41 +114,70 @@ def _read_source(root: Path, abs_path: Path) -> SourceFile:
 
 
 def _collect_sources(root: Path, manifest: Manifest) -> list[SourceFile]:
-    includes = manifest.spec.include or []
-    excludes = manifest.spec.exclude or []
+    """Walk the bundle and collect every `.md` file the resolver accepts.
 
-    # First, assemble the candidate set in a deterministic order: walk the
-    # tree once, filter to spec files, then keep only those that match any
-    # include glob and don't match any exclude glob.
+    The membership question is delegated to
+    ``constants.is_bundle_md`` — the same resolver the CLI runs at
+    ``spec status`` / ``spec add`` time and the Cloud surfaces in the
+    file tree. That's what makes "what's in the bundle on disk", "what
+    `spec compile` reads", and "what shows up in the Cloud bundle
+    view" all answer the same question (PLAN.md §2.1).
+    """
+    # The compiler's `Manifest` dataclass exposes the `spec` block as
+    # an object; the resolver wants a mapping. Rebuild a small dict so
+    # we don't leak the dataclass into the resolver's API contract
+    # (the CLI side uses a raw mapping).
+    spec_mapping: dict[str, Any] = {
+        "include": list(manifest.spec.include or []),
+        "exclude": list(manifest.spec.exclude or []),
+    }
+
     ordered: list[Path] = []
     seen: set[str] = set()
 
-    # Entry always first.
+    # Entry always first — even if it'd otherwise be excluded by the
+    # resolver, an explicit `spec.entry` is the user's most direct
+    # statement of intent. We still skip the manifest itself and
+    # require the file to exist.
     entry_abs = (root / manifest.spec.entry).resolve()
     if entry_abs.is_file():
         rel = _rel(root, entry_abs)
-        ordered.append(entry_abs)
-        seen.add(rel)
-
-    # Then, for each include glob (in order), gather matching files.
-    for pattern in includes:
-        for abs_path in sorted(root.rglob("*")):
-            if not abs_path.is_file():
-                continue
-            rel = _rel(root, abs_path)
-            if rel in seen:
-                continue
-            if not is_spec_file(rel) or PurePosixPath(rel).name == MANIFEST_FILENAME:
-                continue
-            # Skip anything inside a dot-prefixed directory.
-            if any(part.startswith(".") for part in PurePosixPath(rel).parts[:-1]):
-                continue
-            if not glob_match(rel, pattern):
-                continue
-            if match_any(rel, excludes):
-                continue
-            ordered.append(abs_path)
+        if PurePosixPath(rel).name != MANIFEST_FILENAME and is_spec_file(rel):
+            ordered.append(entry_abs)
             seen.add(rel)
+
+    for abs_path in sorted(root.rglob("*")):
+        if not abs_path.is_file():
+            continue
+        rel = _rel(root, abs_path)
+        if rel in seen:
+            continue
+        if not is_spec_file(rel) or PurePosixPath(rel).name == MANIFEST_FILENAME:
+            continue
+        if any(part.startswith(".") for part in PurePosixPath(rel).parts[:-1]):
+            continue
+        # `.prompts` files have their own assembly path and are walked
+        # separately by `_collect_prompts`; skip them here so the spec
+        # walk stays markdown-only.
+        if is_session_file(rel):
+            continue
+        # Read frontmatter once so the resolver can honour `spec: true /
+        # false` overrides. Errors fall through to "no frontmatter".
+        try:
+            text_for_fm = abs_path.read_text(encoding="utf-8")
+        except (OSError, UnicodeDecodeError):
+            text_for_fm = ""
+        try:
+            parsed = _fm.parse(text_for_fm, origin=rel)
+            fm_dict: dict[str, Any] = {}
+            if parsed.spec:
+                fm_dict["spec"] = parsed.spec
+        except Exception:
+            fm_dict = {}
+        if not is_bundle_md(rel, manifest_spec=spec_mapping, frontmatter=fm_dict):
+            continue
+        ordered.append(abs_path)
+        seen.add(rel)
 
     return [_read_source(root, p) for p in ordered]
 
