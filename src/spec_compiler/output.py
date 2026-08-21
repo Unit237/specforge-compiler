@@ -87,21 +87,6 @@ def write_outputs(
     return written
 
 
-def summarize(files: list[GeneratedFile]) -> str:
-    if not files:
-        return "0 files"
-    total_bytes = sum(len(f.content.encode("utf-8")) for f in files)
-    return f"{len(files)} file(s), {total_bytes} bytes"
-
-
-def humanize_size(nbytes: int) -> str:
-    for unit in ("B", "KB", "MB"):
-        if nbytes < 1024 or unit == "MB":
-            return f"{nbytes:.0f} {unit}" if unit == "B" else f"{nbytes/1024:.1f} {unit}"
-        nbytes //= 1024
-    return f"{nbytes} B"
-
-
 def relpath(root: Path, p: Path) -> str:
     try:
         return os.path.relpath(p, root)

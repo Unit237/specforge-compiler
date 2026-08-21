@@ -1,5 +1,3 @@
-import pytest
-
 from spec_compiler.routing import group_by_config, resolve
 from spec_compiler.schema import parse_manifest
 

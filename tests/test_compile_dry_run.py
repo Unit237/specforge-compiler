@@ -1,5 +1,3 @@
-from pathlib import Path
-
 from spec_compiler.compile import CompileOptions, compile_bundle
 
 

@@ -9,7 +9,7 @@ from spec_compiler.prompts_routing import (
     resolve_session,
     sessions_for_config,
 )
-from spec_compiler.routing import ResolvedConfig, resolve
+from spec_compiler.routing import ResolvedConfig
 from spec_compiler.schema import parse_manifest
 
 
