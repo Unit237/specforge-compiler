@@ -101,11 +101,6 @@ def is_spec_file(path: str | PurePosixPath) -> bool:
     return p.suffix.lower() in SPEC_EXTENSIONS
 
 
-def is_spec_doc(path: str | PurePosixPath) -> bool:
-    """A traditional Markdown spec doc (intent). Excludes `.prompt` sessions."""
-    return PurePosixPath(str(path)).suffix.lower() in SPEC_DOC_EXTENSIONS
-
-
 def is_session_file(path: str | PurePosixPath) -> bool:
     """A captured or hand-authored `.prompt` session file."""
     return PurePosixPath(str(path)).suffix.lower() == SESSION_EXTENSION
